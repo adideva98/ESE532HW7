@@ -4,7 +4,7 @@
 
 static unsigned Coefficients[] = {2, 15, 62, 98, 62, 15, 2};
 
-static void Filter_horizontal_SW(const unsigned char * Input,
+void Filter_horizontal_SW(const unsigned char * Input,
 		                      unsigned char * Output)
 {
   int X, Y, i;
@@ -17,7 +17,7 @@ static void Filter_horizontal_SW(const unsigned char * Input,
       Output[Y * OUTPUT_FRAME_WIDTH + X] = Sum >> 8;
     }
 }
-static void Filter_Horizontal_HW(const unsigned char * Input, unsigned char *Output){
+void Filter_Horizontal_HW(const unsigned char * Input, unsigned char *Output){
 	int X,Y,i;
 	unsigned char input[7];
 	unsigned char next_ip;
@@ -43,35 +43,48 @@ static void Filter_Horizontal_HW(const unsigned char * Input, unsigned char *Out
 
 	}
 }
-static void Filter_Horizontal_HW_stream(const unsigned char *Input, hls::stream<unsigned char> & Output){
+void Filter_Horizontal_HW_stream(const unsigned char *Input, hls::stream<unsigned char> & Output){
 	int X,Y,i;
 	unsigned char input[7];
+#pragma HLS DATAFLOW
+	unsigned char local_coeff[7];
+	for(i=0;i<FILTER_LENGTH;i++){
+#pragma HLS unroll
+		local_coeff[i]=Coefficients[i];
+	}
 	unsigned char next_ip;
 
 	for (Y=0;Y<SCALED_FRAME_HEIGHT;Y++){
-		for(i=0;i<FILTER_LENGTH;i++){
-#pragma HLS unroll
-			input[i]=Input[Y*SCALED_FRAME_WIDTH+i];
-		}
+			input[0]=Input[Y*SCALED_FRAME_WIDTH+0];
+			input[1]=Input[Y*SCALED_FRAME_WIDTH+1];
+			input[2]=Input[Y*SCALED_FRAME_WIDTH+2];
+			input[3]=Input[Y*SCALED_FRAME_WIDTH+3];
+			input[4]=Input[Y*SCALED_FRAME_WIDTH+4];
+			input[5]=Input[Y*SCALED_FRAME_WIDTH+5];
+//			input[6]=Input[Y*SCALED_FRAME_WIDTH+6];
 		for(X=0;X< OUTPUT_FRAME_WIDTH;X++){
 #pragma HLS pipeline
-			next_ip=Input[Y*SCALED_FRAME_WIDTH+FILTER_LENGTH+X];
+			input[6]=Input[Y*SCALED_FRAME_WIDTH+FILTER_LENGTH+X-1];
 			unsigned int Sum=0;
-			for(i=0;i<FILTER_LENGTH;i++){
-				Sum+=Coefficients[i]*input[i];
-			}
+				Sum+=Coefficients[0]*input[0];
+				Sum+=Coefficients[1]*input[1];
+				Sum+=Coefficients[2]*input[2];
+				Sum+=Coefficients[3]*input[3];
+				Sum+=Coefficients[4]*input[4];
+				Sum+=Coefficients[5]*input[5];
+				Sum+=Coefficients[6]*input[6];
 //			Output[Y*OUTPUT_FRAME_WIDTH+X]=Sum>>8;
 			Output.write(Sum>>8);
-			for(i=0;i<6;i++){
+			for(i=0;i<FILTER_LENGTH-1;i++){
 #pragma HLS unroll
 				input[i]=input[i+1];
 			}
-			input[6]=next_ip;
+//			input[6]=next_ip;
 		}
 
 	}
 }
-static void Filter_vertical_SW(const unsigned char * Input,
+void Filter_vertical_SW(const unsigned char * Input,
 		                    unsigned char * Output)
 {
   int X, Y, i;
@@ -85,7 +98,7 @@ static void Filter_vertical_SW(const unsigned char * Input,
     }
 }
 
-static void Filter_Vertical_HW(const unsigned char * Input,
+void Filter_Vertical_HW(const unsigned char * Input,
 		                    unsigned char * Output)
 {
   int X, Y, i;
@@ -154,14 +167,21 @@ static void Filter_Vertical_HW(const unsigned char * Input,
 //
 //}
 
-static void Filter_Vertical_HW_stream(hls::stream<unsigned char>& Input,
+void Filter_Vertical_HW_stream(hls::stream<unsigned char>& Input,
 		                    unsigned char * Output)
 {
 //	unsigned char Input_buf[SCALED_FRAME_HEIGHT * OUTPUT_FRAME_WIDTH];
 	unsigned char Input_buf[7][OUTPUT_FRAME_WIDTH];
+	unsigned char local_coeff[7];
+#pragma HLS DATAFLOW
+	for(int i=0;i<FILTER_LENGTH;i++){
+#pragma HLS unroll
+		local_coeff[i]=Coefficients[i];
+	}
   int X, Y, i;
   int lastrow=6;
 	for(int y=0;y<6;y++){
+//#pragma HLS pipeline
 		for(int x=0;x<OUTPUT_FRAME_WIDTH;x++){
 //#pragma HLS unroll
 #pragma HLS pipeline
@@ -175,16 +195,16 @@ static void Filter_Vertical_HW_stream(hls::stream<unsigned char>& Input,
 #pragma HLS pipeline
 				Input_buf[(Y+6)%7][X]=Input.read();
 				  unsigned int Sum = 0;
-				  for (i = 0; i < FILTER_LENGTH; i++){
-					Sum += Coefficients[i] *Input_buf[(i+(Y+6)%7+1)%7][X];
-				  }
+					Sum += local_coeff[0] *Input_buf[(0+(Y+6)%7+1)%7][X];
+					Sum += local_coeff[1] *Input_buf[(1+(Y+6)%7+1)%7][X];
+					Sum += local_coeff[2] *Input_buf[(2+(Y+6)%7+1)%7][X];
+					Sum += local_coeff[3] *Input_buf[(3+(Y+6)%7+1)%7][X];
+					Sum += local_coeff[4] *Input_buf[(4+(Y+6)%7+1)%7][X];
+					Sum += local_coeff[5] *Input_buf[(5+(Y+6)%7+1)%7][X];
+					Sum += local_coeff[6] *Input_buf[(6+(Y+6)%7+1)%7][X];
 				  Output[Y * OUTPUT_FRAME_WIDTH + X] = Sum >> 8;
-			}
-//			for(i=0;i<6;i++){
-//#pragma HLS unroll
-//				for(int j=0;j<OUTPUT_FRAME_WIDTH;j++){
-//					Input_buf[i][j]=Input_buf[i+1][j];
-//				}
+				  //Input_buf[i][j]=Input_buf[i+1][j];
+				}
 //			}
 		}
 }
@@ -204,27 +224,17 @@ void Filter_SW(const unsigned char * Input,
 void Filter_HW(const unsigned char * Input,
 	           unsigned char * Output)
 {
-//#pragma HLS stream
-//#pragma HLS DATAFLOW
+#pragma HLS stream
+#pragma HLS DATAFLOW
 	//#define NO_SYNTH
 //#define NORMAL	//question 2
 #ifdef NO_SYNTH
   unsigned char * Temp = (unsigned char *) malloc(SCALED_FRAME_HEIGHT * OUTPUT_FRAME_WIDTH);
 #endif
-
-#ifdef NORMAL
-    unsigned char temp[SCALED_FRAME_HEIGHT * OUTPUT_FRAME_WIDTH];
-    unsigned char * Temp = &temp[0];
-    Filter_Horizontal_HW(Input, Temp);
-  //  Filter_horizontal_SW(Input,Temp);
-    Filter_Vertical_HW(Temp, Output);
-#else
-
   hls:: stream<unsigned char> Temp;
   Filter_Horizontal_HW_stream(Input, Temp);
 //  Filter_horizontal_SW(Input,Temp);
   Filter_Vertical_HW_stream(Temp, Output);
-#endif
 
 
 
