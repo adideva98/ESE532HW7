@@ -1,27 +1,3 @@
-
-Conversation opened. 29 messages. All messages read.
-
-Skip to content
-Using University of Pennsylvania SEAS Mail with screen readers
-11 of 8,070
-For HW7
-Om Paranjay
-	
-	Mon, Oct 24, 11:47 AM (5 days ago)
-Hey Junpeng I am your partner for HW7. When do you want to start working? Thanks
-26
-Om Paranjay
-	
-	Fri, Oct 28, 9:34 PM (19 hours ago)
-I think that's a great speed. I'll write the host code in some time.
-Junpeng Zhao
-	
-AttachmentsFri, Oct 28, 11:41 PM (17 hours ago)
-	
-to me
- One attachment  •  Scanned by Gmail
-	
-
 #include "Pipeline.h"
 #include <stdlib.h>
 #include  <hls_stream.h>
