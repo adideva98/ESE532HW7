@@ -119,18 +119,14 @@ int main(int argc, char** argv)
         // std::cout<<"After differentiate"<<std::endl;
 
       Size = Compress_SW(Temp_data[2], Output_data);
-      
+      Store_data("../data/Output.bin",Output_data , Size);
      //total_size+= Compress_SW(Temp_data[2], Output_data + total_size);
             // std::cout<<"After compress"<<std::endl;
       
       std::cout<<Frame<<"\tsize="<<Size<<std::endl;
       
     }
-    Store_data("../data/Output.bin",Output_data , Size);
-        std::cout<<"before q.finish"<<std::endl;
-        std::cout<<"after q.finish"<<std::endl;
-   
-//   q.finish();
+q.finish();
 
     
 
